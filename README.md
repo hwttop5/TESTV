@@ -24,6 +24,44 @@
 - OpenAI API
 - YouTube Data API
 
+## 开发约束
+
+本项目遵循 [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) 规范。
+
+### Commit 格式
+
+```
+<type>[optional scope][optional !]: <description>
+```
+
+### 示例
+
+```bash
+feat: add user authentication
+fix(api): handle empty query parameters
+docs: update installation guide
+chore: upgrade dependencies
+refactor(extraction)!: change prompt structure
+
+# Breaking change with footer
+feat!: redesign API response format
+
+BREAKING CHANGE: API now returns Chinese fields only
+```
+
+### 常用类型
+
+- `feat`: 新功能
+- `fix`: 修复 bug
+- `docs`: 文档变更
+- `chore`: 构建/工具链变更
+- `refactor`: 重构（不改变功能）
+- `test`: 测试相关
+- `style`: 代码格式调整
+- `perf`: 性能优化
+
+详细规则请查看 [AGENTS.md](./AGENTS.md)。
+
 ## 本地启动
 
 ```powershell
