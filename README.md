@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# YouTube 产品评测榜单
 
-## Getting Started
+从指定 YouTube 播放列表同步产品评测视频，提取字幕或音频转写内容，再用 AI 抽取产品名称、评分、优点、缺点和证据片段，生成可排序、可搜索的中文展示页面。
 
-First, run the development server:
+## 当前能力
 
-```bash
+- 同步 YouTube 播放列表视频元数据
+- 抓取公开视频字幕，支持 `yt-dlp` 登录态补充抓取
+- 可选音频转写兜底
+- 抽取产品名称、评分、优点、缺点、证据片段
+- 只公开展示中文字段齐全的产品记录
+- 首页支持按分数排序、按日期排序、产品名称搜索
+- 详情页展示原视频、评分、优缺点和证据片段
+- PostgreSQL + Prisma 数据模型，预留京东 / 淘宝推广链接字段
+
+## 技术栈
+
+- Next.js 16 App Router
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- PostgreSQL
+- Prisma 7
+- OpenAI API
+- YouTube Data API
+
+## 本地启动
+
+```powershell
+npm install
+docker-compose up -d
+npm run db:generate
+npm run db:push
+npm run db:seed
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+默认访问地址：
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 环境变量
 
-## Learn More
+复制 `.env.example` 为 `.env`，至少配置：
 
-To learn more about Next.js, take a look at the following resources:
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/youtube_reviews?schema=public"
+YOUTUBE_API_KEY="your_youtube_api_key_here"
+YOUTUBE_PLAYLIST_ID="PLWAtCzJzHiz8e1itWCrJuMVqBDYUI6yd7"
+OPENAI_API_KEY="your_openai_api_key_here"
+OPENAI_MODEL="gpt-4o-mini"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+如果 YouTube 需要登录态，额外配置：
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```env
+YTDLP_COOKIES_FILE="/absolute/path/to/youtube-cookies.txt"
+```
 
-## Deploy on Vercel
+或：
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```env
+YTDLP_COOKIES_FROM_BROWSER="chrome:C:\path\to\profile"
+YTDLP_JS_RUNTIMES="node"
+YTDLP_REMOTE_COMPONENTS="ejs:github"
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 数据同步
+
+```powershell
+npm run sync:playlist
+npm run sync:transcripts
+npm run sync:extract
+npm run sync:status
+npm run sync:daily
+```
+
+## 质量检查
+
+```powershell
+npm run lint
+npm test
+npx tsc --noEmit
+npm run build
+```
+
+## 当前已验证的本地状态
+
+- 播放列表元数据已同步到 `705` 条可访问视频
+- 首页与公开 API 只输出中文展示字段
+- 本地字幕同步链路已打通，支持 `cookies-from-browser` 模式
+
+## 注意
+
+- 当前仓库不包含线上部署凭据
+- 如果要把抽取和全量同步跑到生产环境，需要真实的 `OPENAI_API_KEY`、YouTube 相关配置以及线上数据库

@@ -1,0 +1,127 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Video {
+  id            String   @id @default(cuid())
+  youtubeId     String   @unique
+  title         String
+  publishedAt   DateTime
+  thumbnailUrl  String?
+  videoUrl      String
+  syncStatus    String   @default("pending") // pending, transcript_synced, extracted, failed
+  transcriptAttempts Int @default(0)
+  extractionAttempts Int @default(0)
+  lastTranscriptAt DateTime?
+  lastExtractedAt DateTime?
+  lastError     String?  @db.Text
+
+  // Video availability tracking
+  isAvailable   Boolean  @default(true)
+  unavailableReason String? // "private", "deleted", "region_blocked", "copyright_claimed"
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  transcripts   Transcript[]
+  products      Product[]
+
+  @@index([publishedAt])
+  @@index([syncStatus])
+  @@index([transcriptAttempts])
+  @@index([extractionAttempts])
+  @@index([isAvailable])
+}
+
+model Transcript {
+  id            String   @id @default(cuid())
+  videoId       String
+  video         Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  content       String   @db.Text
+  source        String   // youtube_auto, youtube_manual, whisper, cloud_transcription
+  language      String   @default("en")
+  segments      Json?    // Array of {start, end, text}
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([videoId])
+}
+
+model Product {
+  id                String   @id @default(cuid())
+  videoId           String
+  video             Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  // Original English fields (internal use only)
+  productName       String
+  scoreRaw          String?  // Original score text like "8/10", "85%"
+  scoreValue        Float?   // Extracted numeric value
+  scoreScale        String?  // "10", "100", "5"
+  normalizedScore   Float?   // Normalized to 0-100 scale
+
+  pros              Json     // Array of strings
+  cons              Json     // Array of strings
+  evidenceSegments  Json?    // Array of {text, timestamp}
+
+  // Chinese display fields (public facing)
+  productNameZh     String?  // 中文产品名
+  videoTitleZh      String?  // 中文视频标题
+  prosZh            Json?    // 中文优点数组
+  consZh            Json?    // 中文缺点数组
+  evidenceSegmentsZh Json?   // 中文证据片段数组 {text, timestamp}
+
+  confidence        Float?   // AI extraction confidence 0-1
+  published         Boolean  @default(false)
+
+  affiliateLinks    AffiliateLink[]
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([videoId])
+  @@index([published, normalizedScore])
+  @@index([published, createdAt])
+}
+
+model AffiliateLink {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  platform    String   // jd, taobao, other
+  url         String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([productId])
+}
+
+model SyncRun {
+  id              String   @id @default(cuid())
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  status          String   // running, completed, failed
+
+  videosProcessed Int      @default(0)
+  videosSuccess   Int      @default(0)
+  videosFailed    Int      @default(0)
+
+  errorMessage    String?  @db.Text
+  errorDetails    Json?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([startedAt])
+  @@index([status])
+}
