@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs'
+import path from 'node:path'
+
 export interface YtDlpOptions {
   ytDlpBin?: string
   ytDlpCookiesFile?: string
@@ -23,9 +26,29 @@ export function getYtDlpCommand(ytDlpBin?: string): {
   }
 }
 
+export function resolveYtDlpCookiesFile(
+  configuredPath?: string,
+  allowFallback = true
+): string | undefined {
+  if (configuredPath?.trim()) {
+    return configuredPath.trim()
+  }
+
+  if (!allowFallback) {
+    return undefined
+  }
+
+  const fallback = path.join(process.cwd(), 'youtube-cookies.txt')
+  return existsSync(fallback) ? fallback : undefined
+}
+
 export function appendYtDlpOptions(args: string[], options: YtDlpOptions): void {
-  if (options.ytDlpCookiesFile) {
-    args.push('--cookies', options.ytDlpCookiesFile)
+  const cookiesFile = resolveYtDlpCookiesFile(
+    options.ytDlpCookiesFile,
+    !options.ytDlpCookiesFromBrowser
+  )
+  if (cookiesFile) {
+    args.push('--cookies', cookiesFile)
   }
 
   if (options.ytDlpCookiesFromBrowser) {

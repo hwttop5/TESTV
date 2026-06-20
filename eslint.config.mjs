@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    ".codex*.log",
+    ".tmp-*/**",
+    ".tmp-*",
+    "prisma/*.db",
+    "scripts/__pycache__/**",
   ]),
 ]);
 

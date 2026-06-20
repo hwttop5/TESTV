@@ -3,6 +3,7 @@ import { mkdtemp, readFile, readdir, rm } from 'fs/promises'
 import { tmpdir } from 'os'
 import path from 'path'
 import { promisify } from 'util'
+import { buildOpenAiHeaders, buildOpenAiUrl } from './openai-client'
 import type { TranscriptSegment } from './review-types'
 import { appendYtDlpOptions, getYtDlpCommand } from './yt-dlp'
 
@@ -10,6 +11,7 @@ const execFileAsync = promisify(execFile)
 
 export interface AudioTranscriptionOptions {
   apiKey: string
+  baseUrl?: string
   model?: string
   ytDlpBin?: string
   ytDlpCookiesFile?: string
@@ -18,6 +20,15 @@ export interface AudioTranscriptionOptions {
   ytDlpRemoteComponents?: string
   keepAudioFiles?: boolean
 }
+
+export type AudioDownloadOptions = Pick<
+  AudioTranscriptionOptions,
+  | 'ytDlpBin'
+  | 'ytDlpCookiesFile'
+  | 'ytDlpCookiesFromBrowser'
+  | 'ytDlpJsRuntimes'
+  | 'ytDlpRemoteComponents'
+>
 
 export interface AudioTranscriptionResult {
   content: string
@@ -55,10 +66,10 @@ function getMimeType(filePath: string): string {
   }
 }
 
-async function downloadAudio(videoId: string, options: AudioTranscriptionOptions): Promise<{
-  audioPath: string
-  tempDir: string
-}> {
+async function downloadAudio(
+  videoId: string,
+  options: AudioDownloadOptions
+): Promise<{ audioPath: string; tempDir: string }> {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'testv-audio-'))
   const outputTemplate = path.join(tempDir, `${videoId}.%(ext)s`)
   const { command, args } = getYtDlpCommand(options.ytDlpBin)
@@ -82,7 +93,7 @@ async function downloadAudio(videoId: string, options: AudioTranscriptionOptions
   } catch (error) {
     await rm(tempDir, { recursive: true, force: true })
     throw new Error(
-      `音频下载失败。请确认已安装 yt-dlp，或正确设置 YTDLP_BIN。原始错误：${error instanceof Error ? error.message : String(error)}`
+      `audio download failed for ${videoId}: ${error instanceof Error ? error.message : String(error)}`
     )
   }
 
@@ -91,13 +102,20 @@ async function downloadAudio(videoId: string, options: AudioTranscriptionOptions
 
   if (!audioFile) {
     await rm(tempDir, { recursive: true, force: true })
-    throw new Error('yt-dlp 没有生成可转写的音频文件。')
+    throw new Error(`yt-dlp did not produce an audio file for ${videoId}`)
   }
 
   return {
     audioPath: path.join(tempDir, audioFile),
     tempDir,
   }
+}
+
+export async function downloadYouTubeAudio(
+  videoId: string,
+  options: AudioDownloadOptions
+): Promise<{ audioPath: string; tempDir: string }> {
+  return downloadAudio(videoId, options)
 }
 
 async function transcribeAudioFile(
@@ -117,17 +135,15 @@ async function transcribeAudioFile(
     path.basename(audioPath)
   )
 
-  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+  const response = await fetch(buildOpenAiUrl('/v1/audio/transcriptions', options.baseUrl), {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${options.apiKey}`,
-    },
+    headers: buildOpenAiHeaders(options.apiKey),
     body: formData,
   })
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`OpenAI 音频转写失败：${response.status} ${errorText}`)
+    throw new Error(`OpenAI transcription failed: ${response.status} ${errorText}`)
   }
 
   const data = (await response.json()) as OpenAITranscriptionResponse
@@ -147,9 +163,8 @@ async function transcribeAudioFile(
     : []
 
   const content = data.text || segments.map((segment) => segment.text).join(' ')
-
   if (!content.trim()) {
-    throw new Error('OpenAI 音频转写返回空文本。')
+    throw new Error('OpenAI transcription returned empty text')
   }
 
   return {
@@ -164,7 +179,7 @@ export async function transcribeYouTubeAudio(
   videoId: string,
   options: AudioTranscriptionOptions
 ): Promise<AudioTranscriptionResult> {
-  const { audioPath, tempDir } = await downloadAudio(videoId, options)
+  const { audioPath, tempDir } = await downloadYouTubeAudio(videoId, options)
 
   try {
     return await transcribeAudioFile(audioPath, options)

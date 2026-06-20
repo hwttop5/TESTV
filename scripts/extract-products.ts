@@ -1,42 +1,88 @@
 import 'dotenv/config'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
-import { extractProductInfo } from '../lib/extraction'
-import { parsePositiveInt, shouldPublishChineseProduct, toChineseStringArray } from '../lib/review-types'
+import { createPlaceholderExtraction, extractProductInfo } from '../lib/extraction'
+import { parsePositiveInt, shouldPublishChineseProduct, toChineseStringArray, type ProductContentStatus } from '../lib/review-types'
 
 function isEnabled(value: string | undefined): boolean {
   return value === '1' || value?.toLowerCase() === 'true'
 }
 
-function productNeedsChineseReprocess(product: {
-  productNameZh: string | null
-  normalizedScore: number | null
+function productNeedsReprocess(product: {
+  contentStatus: string | null
+  scoreValue: number | null
   prosZh: unknown
   consZh: unknown
 }): boolean {
-  return Boolean(
-    !product.productNameZh?.trim() ||
-    product.normalizedScore === null ||
-    toChineseStringArray(product.prosZh).length === 0 ||
-    toChineseStringArray(product.consZh).length === 0
-  )
+  if (!product.contentStatus) return true
+  if (product.contentStatus !== 'complete') return true
+  return product.scoreValue === null || toChineseStringArray(product.prosZh).length === 0 || toChineseStringArray(product.consZh).length === 0
+}
+
+function normalizeContentStatus(status: string | null | undefined): ProductContentStatus {
+  if (status === 'complete' || status === 'partial' || status === 'placeholder') {
+    return status
+  }
+
+  return 'placeholder'
+}
+
+async function buildProductData(video: {
+  id: string
+  title: string
+  transcripts: Array<{
+    content: string
+    segments: unknown
+  }>
+}) {
+  const transcript = video.transcripts[0]
+
+  if (!transcript) {
+    const placeholder = createPlaceholderExtraction(video.title)
+    return {
+      extracted: placeholder,
+      contentStatus: placeholder.contentStatus,
+      shouldPublish: false,
+      lastError: '暂无字幕，已创建占位产品',
+    }
+  }
+
+  const transcriptSegments = Array.isArray(transcript.segments)
+    ? transcript.segments as unknown as Array<{ text: string; start: number; duration: number }>
+    : undefined
+
+  const extracted = await extractProductInfo(transcript.content, {
+    apiKey: process.env.OPENAI_API_KEY,
+    baseUrl: process.env.OPENAI_BASE_URL || process.env.OPENAI_API_BASE_URL,
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    videoTitle: video.title,
+    transcriptSegments,
+  })
+
+  const contentStatus = normalizeContentStatus(extracted.contentStatus)
+  const shouldPublish = shouldPublishChineseProduct({
+    scoreValue: extracted.scoreValue,
+    prosZh: extracted.prosZh,
+    consZh: extracted.consZh,
+    hasTranscript: true,
+  })
+
+  return {
+    extracted,
+    contentStatus,
+    shouldPublish,
+    lastError: contentStatus === 'complete' ? null : '产品信息待补全',
+  }
 }
 
 async function extractProducts() {
-  console.log('Extracting product info from transcripts...')
-
-  const apiKey = process.env.OPENAI_API_KEY
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
-
-  if (!apiKey) {
-    console.error('Missing OPENAI_API_KEY')
-    process.exit(1)
-  }
+  console.log('开始抽取产品信息...')
 
   const maxAttempts = parsePositiveInt(process.env.EXTRACTION_MAX_ATTEMPTS, 3)
   const batchSize = parsePositiveInt(process.env.EXTRACTION_BATCH_SIZE, 10)
   const continuousMode = isEnabled(process.env.CONTINUOUS_MODE)
-  const reprocessMissingChinese = isEnabled(process.env.REPROCESS_MISSING_CHINESE)
+  const reprocessExisting = isEnabled(process.env.REPROCESS_ALL_PRODUCTS) || isEnabled(process.env.REPROCESS_MISSING_CHINESE)
+  const forceRetryFailed = isEnabled(process.env.FORCE_RETRY_FAILED_EXTRACTIONS)
 
   let totalSuccess = 0
   let totalFailed = 0
@@ -44,42 +90,56 @@ async function extractProducts() {
 
   do {
     iteration++
-    console.log(`\n--- Iteration ${iteration} ---`)
+    console.log(`\n--- 第 ${iteration} 轮 ---`)
 
     const candidateVideos = await prisma.video.findMany({
       where: {
-        transcripts: {
-          some: {},
-        },
-        products: reprocessMissingChinese ? { some: {} } : { none: {} },
-        extractionAttempts: {
-          lt: maxAttempts,
-        },
+        ...(forceRetryFailed
+          ? {}
+          : {
+              extractionAttempts: {
+                lt: maxAttempts,
+              },
+            }),
       },
       include: {
         transcripts: {
           take: 1,
           orderBy: { createdAt: 'desc' },
         },
-        products: {
-          take: 1,
-          orderBy: { updatedAt: 'desc' },
-        },
+        product: true,
       },
       orderBy: {
         publishedAt: 'desc',
       },
-      take: reprocessMissingChinese ? batchSize * 5 : batchSize,
+      take: batchSize * 5,
     })
 
-    const videos = reprocessMissingChinese
-      ? candidateVideos.filter((video) => video.products.some(productNeedsChineseReprocess)).slice(0, batchSize)
-      : candidateVideos
+    const videos = candidateVideos
+      .filter((video) => {
+        if (!reprocessExisting) {
+          return !video.product
+        }
 
-    console.log(`Found ${videos.length} videos to process`)
+        if (!video.product) return true
+        return productNeedsReprocess(video.product)
+      })
+      .sort((left, right) => {
+        const leftHasTranscript = left.transcripts.length > 0 ? 1 : 0
+        const rightHasTranscript = right.transcripts.length > 0 ? 1 : 0
+
+        if (leftHasTranscript !== rightHasTranscript) {
+          return rightHasTranscript - leftHasTranscript
+        }
+
+        return right.publishedAt.getTime() - left.publishedAt.getTime()
+      })
+      .slice(0, batchSize)
+
+    console.log(`待处理视频：${videos.length}`)
 
     if (videos.length === 0) {
-      console.log('No more videos to process.')
+      console.log('没有待处理视频。')
       break
     }
 
@@ -87,26 +147,21 @@ async function extractProducts() {
     let failedCount = 0
 
     for (const video of videos) {
-      console.log(`Processing: ${video.title}`)
-
-      const transcript = video.transcripts[0]
-      if (!transcript) {
-        console.log('  No transcript found')
-        failedCount++
-        continue
-      }
+      console.log(`处理：${video.title}`)
 
       try {
+        const nextAttempts = forceRetryFailed ? video.extractionAttempts + 1 : undefined
+
         await prisma.video.update({
           where: { id: video.id },
           data: {
-            extractionAttempts: { increment: 1 },
+            extractionAttempts: nextAttempts ? nextAttempts : { increment: 1 },
             lastError: null,
           },
         })
 
-        const extracted = await extractProductInfo(transcript.content, apiKey, model, video.title)
-        const shouldPublish = shouldPublishChineseProduct(extracted)
+        const { extracted, contentStatus, shouldPublish, lastError } = await buildProductData(video)
+
         const productData = {
           productName: extracted.productName,
           productNameZh: extracted.productNameZh,
@@ -115,6 +170,12 @@ async function extractProducts() {
           scoreValue: extracted.scoreValue,
           scoreScale: extracted.scoreScale,
           normalizedScore: extracted.normalizedScore,
+          priceRaw: extracted.priceRaw,
+          priceValue: extracted.priceValue,
+          priceCurrency: extracted.priceCurrency,
+          priceType: extracted.priceType,
+          priceContext: extracted.priceContext,
+          priceConfidence: extracted.priceConfidence,
           pros: extracted.pros as unknown as Prisma.InputJsonValue,
           cons: extracted.cons as unknown as Prisma.InputJsonValue,
           prosZh: extracted.prosZh as unknown as Prisma.InputJsonValue,
@@ -123,12 +184,12 @@ async function extractProducts() {
           evidenceSegmentsZh: extracted.evidenceSegmentsZh as unknown as Prisma.InputJsonValue,
           confidence: extracted.confidence,
           published: shouldPublish,
+          contentStatus,
         }
 
-        const existingProduct = video.products[0]
-        if (existingProduct && reprocessMissingChinese) {
+        if (video.product) {
           await prisma.product.update({
-            where: { id: existingProduct.id },
+            where: { id: video.product.id },
             data: productData,
           })
         } else {
@@ -145,18 +206,17 @@ async function extractProducts() {
           data: {
             syncStatus: 'extracted',
             lastExtractedAt: new Date(),
-            lastError: shouldPublish ? null : 'Extracted product did not meet Chinese publish criteria',
+            lastError,
           },
         })
 
-        console.log(`  Product extracted: ${extracted.productNameZh || extracted.productName || '(empty)'}`)
-        console.log(`  Score: ${extracted.scoreRaw || 'N/A'} (${extracted.normalizedScore ?? 'N/A'})`)
-        console.log(`  Confidence: ${(extracted.confidence * 100).toFixed(1)}%`)
-        console.log(`  Published: ${shouldPublish ? 'Yes' : 'No'}`)
+        console.log(`  产品：${extracted.productNameZh || extracted.productName}`)
+        console.log(`  状态：${contentStatus}`)
+        console.log(`  评分：${extracted.scoreRaw || '暂无评分'} (${extracted.scoreValue ?? 'N/A'}/10)`)
         successCount++
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error(`  Extraction failed: ${message}`)
+        console.error(`  失败：${message}`)
 
         await prisma.video.update({
           where: { id: video.id },
@@ -169,22 +229,25 @@ async function extractProducts() {
         failedCount++
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const delayMs = video.transcripts[0] ? 600 : 0
+      if (delayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+      }
     }
 
     totalSuccess += successCount
     totalFailed += failedCount
 
-    console.log(`Iteration ${iteration} complete: ${successCount} success, ${failedCount} failed`)
+    console.log(`本轮完成：${successCount} 成功，${failedCount} 失败`)
 
     if (!continuousMode) {
       break
     }
   } while (true)
 
-  console.log(`\n=== Final Summary ===`)
-  console.log(`Total success: ${totalSuccess}`)
-  console.log(`Total failed: ${totalFailed}`)
+  console.log('\n=== 产品抽取汇总 ===')
+  console.log(`成功：${totalSuccess}`)
+  console.log(`失败：${totalFailed}`)
 }
 
 extractProducts()

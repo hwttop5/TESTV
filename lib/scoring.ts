@@ -25,6 +25,18 @@ export function normalizeScore(
   return clampScore((scoreValue / scale) * 100)
 }
 
+export function formatScoreValue(scoreValue: number): string {
+  return scoreValue.toFixed(2).replace(/(?:\.0+|(\.\d*?)0+)$/, '$1')
+}
+
+export function compareScoreValueDesc(a: number | null, b: number | null): number {
+  if (a == null && b == null) return 0
+  if (a == null) return 1
+  if (b == null) return -1
+
+  return b - a
+}
+
 export function parseScore(scoreText: string): ScoreResult | null {
   const raw = scoreText.trim()
   if (!raw) return null

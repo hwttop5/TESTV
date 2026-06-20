@@ -1,15 +1,48 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode so the theme toggle can override system preference */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #fafaf9;
-  --foreground: #1c1917;
+  /* Anthropic-inspired warm cream + clay palette */
+  --background: #f0eee6;
+  --foreground: #141413;
+
+  /* Brand accent: Anthropic "Clay" terracotta */
+  --brand: #d97757;
+  --brand-strong: #c15f3c;
+  --brand-soft: #f5e9e2;
+  --brand-ring: rgba(217, 119, 87, 0.24);
+}
+
+.dark {
+  --background: #1a1915;
+  --foreground: #f0eee6;
+
+  --brand: #e08a6a;
+  --brand-strong: #d97757;
+  --brand-soft: #2a201a;
+  --brand-ring: rgba(224, 138, 106, 0.30);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: "Tiempos Headline", "Songti SC", "Georgia", "Noto Serif SC", serif;
+
+  /* Radius scale: restrained, in keeping with Anthropic's flatter style */
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-panel: 16px;
+
+  /* Soft, flat shadows in keeping with Anthropic's understated style */
+  --shadow-card: 0 1px 2px rgba(20, 20, 19, 0.04), 0 6px 20px rgba(20, 20, 19, 0.05);
+  --shadow-panel: 0 1px 3px rgba(20, 20, 19, 0.05), 0 12px 40px rgba(20, 20, 19, 0.06);
 }
 
 * {
@@ -19,17 +52,142 @@
 html {
   background: var(--background);
   color: var(--foreground);
+  scroll-behavior: smooth;
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* Smooth transition when switching themes */
+body,
+body * {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
 }
 
 body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), "Microsoft YaHei", sans-serif;
+  font-family: var(--font-geist-sans), "PingFang SC", "Hiragino Sans GB",
+    "Noto Sans SC", "Microsoft YaHei", "微软雅黑", sans-serif;
   letter-spacing: 0;
 }
 
+/* Serif display font for headings, mirroring Anthropic's editorial style */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
 button,
-input {
+input,
+select {
   font: inherit;
+}
+
+/* Native <select> dropdown options: the popup list is rendered by the
+   browser and does not inherit the <select>'s Tailwind dark styles. Without
+   explicit colors, Chrome paints a white popup while options keep light text,
+   making them unreadable in dark mode. Pin option colors to match the control. */
+select option {
+  background-color: #fafaf9; /* stone-50 */
+  color: #0c0a09; /* stone-950 */
+}
+
+html.dark select option {
+  background-color: #292524; /* stone-800 */
+  color: #fafaf9; /* stone-50 */
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Visible keyboard focus across all interactive elements */
+*:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---- Entrance animations (restrained, Anthropic-style) ---- */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(110%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease both;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Staggered entrance for product cards */
+.cards-enter > * {
+  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.cards-enter > *:nth-child(1) { animation-delay: 0.03s; }
+.cards-enter > *:nth-child(2) { animation-delay: 0.08s; }
+.cards-enter > *:nth-child(3) { animation-delay: 0.13s; }
+.cards-enter > *:nth-child(4) { animation-delay: 0.18s; }
+.cards-enter > *:nth-child(5) { animation-delay: 0.23s; }
+.cards-enter > *:nth-child(6) { animation-delay: 0.28s; }
+.cards-enter > *:nth-child(7) { animation-delay: 0.33s; }
+.cards-enter > *:nth-child(8) { animation-delay: 0.38s; }
+.cards-enter > *:nth-child(9) { animation-delay: 0.43s; }
+.cards-enter > *:nth-child(10) { animation-delay: 0.48s; }
+.cards-enter > *:nth-child(11) { animation-delay: 0.53s; }
+.cards-enter > *:nth-child(12) { animation-delay: 0.58s; }
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
 }

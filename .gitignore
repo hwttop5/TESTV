@@ -30,11 +30,22 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 dev-server*.log
+.codex*.log
+.tmp-*
 .playwright-mcp/
 .playwright-youtube-profile*/
 youtube-cookies.txt
 output-google-*.png
 output-playwright-*.png
+output-homepage-*.png
+homepage-*.png
+detail-*.png
+caption-probe.json
+testv-home-snapshot.md
+scripts/__pycache__/
+
+# local databases
+/prisma/*.db
 
 # env files (can opt-in for committing if needed)
 .env*

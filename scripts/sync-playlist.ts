@@ -145,6 +145,9 @@ async function syncPlaylist() {
     for (const video of videos) {
       const existing = await prisma.video.findUnique({
         where: { youtubeId: video.id },
+        include: {
+          product: true,
+        },
       })
 
       const publishedAt = video.publishedAt === new Date(0).toISOString() && existing?.publishedAt

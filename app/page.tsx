@@ -1,12 +1,41 @@
+import type { Metadata } from 'next'
 import ProductList from './components/ProductList'
+import InstallPrompt from './components/InstallPrompt'
+import ThemeToggle from './components/ThemeToggle'
+import GitHubLink from './components/GitHubLink'
+import { getProductCatalogPage, normalizePageSize, type SortMode } from '@/lib/product-catalog'
+import { getProductCategoryLabel, normalizeProductCategoryKey } from '@/lib/product-category'
+import type { ProductSummary } from '@/lib/review-types'
 import { prisma } from '@/lib/prisma'
-import { toProductSummary } from '@/lib/review-types'
+import {
+  buildHomeCanonical,
+  buildHomeDescription,
+  buildItemListJsonLd,
+  buildOrganizationJsonLd,
+  buildWebSiteJsonLd,
+  SITE_NAME,
+  jsonLdScript,
+} from '@/lib/seo'
 
 type HomeSearchParams = Promise<{
   sort?: string | string[]
   q?: string | string[]
   page?: string | string[]
+  category?: string | string[]
+  pageSize?: string | string[]
 }>
+
+const emptySyncStats = {
+  products: 0,
+}
+
+type HomeCatalog = {
+  products: ProductSummary[]
+  total: number
+  totalPages: number
+  page: number
+  pageSize: number
+}
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] || ''
@@ -18,29 +47,46 @@ function readPage(value: string): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
 }
 
-async function getSyncStats() {
-  const [videos, transcripts, products] = await Promise.all([
-    prisma.video.count(),
-    prisma.transcript.count(),
-    prisma.product.findMany({
-      where: { published: true },
-      include: {
-        video: {
-          select: {
-            youtubeId: true,
-            publishedAt: true,
-            thumbnailUrl: true,
-            videoUrl: true,
-          },
-        },
-      },
-    }),
-  ])
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: HomeSearchParams
+}): Promise<Metadata> {
+  const params = await searchParams
+  const q = firstParam(params.q).trim()
+  const page = readPage(firstParam(params.page))
+  const category = normalizeProductCategoryKey(firstParam(params.category))
+  const categoryLabel = getProductCategoryLabel(category)
+
+  const description = buildHomeDescription({ categoryLabel, q })
+  const canonical = buildHomeCanonical({ category, page })
+  const shouldIndex = !q && page <= 1
+
+  const titleParts: string[] = []
+  if (category !== 'all') titleParts.push(categoryLabel)
+  if (q) titleParts.push(`搜索“${q}”`)
+  if (page > 1) titleParts.push(`第 ${page} 页`)
+
+  const title = titleParts.length > 0 ? titleParts.join(' · ') : undefined
 
   return {
-    videos,
-    transcripts,
-    displayableProducts: products.filter((product) => toProductSummary(product)).length,
+    ...(title ? { title } : {}),
+    description,
+    alternates: { canonical },
+    robots: shouldIndex ? undefined : { index: false, follow: true },
+    openGraph: {
+      title: title ? `${title} | ${SITE_NAME}` : SITE_NAME,
+      description,
+      url: canonical,
+    },
+  }
+}
+
+async function getSyncStats() {
+  const count = await prisma.product.count()
+
+  return {
+    products: count,
   }
 }
 
@@ -50,47 +96,99 @@ export default async function Home({
   searchParams: HomeSearchParams
 }) {
   const params = await searchParams
-  const sort = firstParam(params.sort) === 'date' ? 'date' : 'score'
+  const sort: SortMode = firstParam(params.sort) === 'date' ? 'date' : 'score'
   const q = firstParam(params.q).trim()
   const page = readPage(firstParam(params.page))
-  const stats = await getSyncStats()
+  const category = normalizeProductCategoryKey(firstParam(params.category))
+  const pageSize = normalizePageSize(firstParam(params.pageSize))
+
+  let stats = emptySyncStats
+  let catalog: HomeCatalog = {
+    products: [],
+    total: 0,
+    totalPages: 1,
+    page: 1,
+    pageSize,
+  }
+
+  try {
+    ;[stats, catalog] = await Promise.all([
+      getSyncStats(),
+      getProductCatalogPage({
+        sort,
+        q,
+        page,
+        pageSize,
+        category,
+      }),
+    ])
+  } catch (error) {
+    console.error('Failed to load home catalog:', error)
+  }
+
+  const jsonLd = [
+    buildWebSiteJsonLd(),
+    buildOrganizationJsonLd(),
+    buildItemListJsonLd(catalog.products.map((product, index) => ({
+      name: product.displayName,
+      path: `/products/${product.id}`,
+      position: (catalog.page - 1) * catalog.pageSize + index + 1,
+    }))),
+  ]
 
   return (
-    <main className="min-h-screen bg-stone-50">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <header className="mb-8 border-b border-stone-200 pb-6">
-          <p className="text-sm font-medium text-red-600">YouTube 产品评测数据站</p>
-          <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_320px] lg:items-end">
+    <main className="min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
+      />
+      <div className="mx-auto max-w-6xl px-4 py-8 pb-28 sm:px-6 lg:px-8">
+        <header className="mb-10">
+          <div className="flex animate-fade-in items-center justify-between gap-4">
+            <div className="inline-flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-control bg-brand text-xs font-bold text-white">
+                TV
+              </span>
+              <span className="text-sm font-medium tracking-tight text-foreground/80">TESTV</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <GitHubLink />
+            </div>
+          </div>
+
+          <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-end">
             <div>
-              <h1 className="max-w-3xl text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
-                自动整理产品评分、优点和缺点
+              <h1 className="font-display max-w-3xl animate-fade-up text-5xl leading-[1.08] tracking-tight text-foreground [animation-delay:0.05s] sm:text-6xl">
+                TESTV 值不值得买
               </h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-stone-600">
-                同步指定播放列表，提取字幕和转写内容，用结构化抽取生成可排序、可搜索的中文产品测评清单。
+              <p className="mt-5 max-w-2xl animate-fade-up text-lg leading-8 text-foreground/60 [animation-delay:0.15s]">
+                Bunny try before you buy.
               </p>
             </div>
-            <div className="rounded-[8px] border border-stone-200 bg-white p-4 text-sm text-stone-600 shadow-sm">
-              <p className="font-medium text-stone-950">当前规则</p>
-              <p className="mt-2">按 0-100 分归一化；只展示中文字段齐全的公开记录。</p>
-              <div className="mt-4 grid grid-cols-3 gap-2 border-t border-stone-100 pt-3 text-center">
-                <div>
-                  <p className="text-lg font-semibold text-stone-950">{stats.videos}</p>
-                  <p className="mt-1 text-xs text-stone-500">视频</p>
-                </div>
-                <div>
-                  <p className="text-lg font-semibold text-stone-950">{stats.transcripts}</p>
-                  <p className="mt-1 text-xs text-stone-500">字幕</p>
-                </div>
-                <div>
-                  <p className="text-lg font-semibold text-stone-950">{stats.displayableProducts}</p>
-                  <p className="mt-1 text-xs text-stone-500">产品</p>
-                </div>
+
+            <div className="animate-fade-up rounded-panel border border-foreground/10 bg-foreground/[0.02] p-5 [animation-delay:0.25s]">
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-foreground/45">当前数据</p>
+              <div className="mt-4 overflow-hidden rounded-card border border-foreground/10 bg-background px-3 py-4 text-center">
+                <p className="font-display text-2xl text-foreground">{stats.products}</p>
+                <p className="mt-1 text-xs text-foreground/50">产品数</p>
               </div>
             </div>
           </div>
         </header>
 
-        <ProductList sort={sort} q={q} page={page} />
+        <ProductList
+          sort={sort}
+          q={q}
+          page={catalog.page}
+          pageSize={catalog.pageSize}
+          category={category}
+          products={catalog.products}
+          total={catalog.total}
+          totalPages={catalog.totalPages}
+        />
+        <InstallPrompt />
       </div>
     </main>
   )
