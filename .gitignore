@@ -50,6 +50,7 @@ scripts/__pycache__/
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+!.env.docker.example
 
 # vercel
 .vercel

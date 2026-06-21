@@ -34,11 +34,11 @@
 - OpenAI 兼容接口
 - YouTube、`yt-dlp`、哔哩哔哩字幕和 ASR 兜底链路
 
-## 快速启动
+## 本地开发
 
 ```powershell
 npm install
-docker-compose up -d
+docker compose up -d postgres
 npm run db:generate
 npm run db:push
 npm run dev -- --port 3001
@@ -56,6 +56,17 @@ http://localhost:3001
 npm run db:seed
 ```
 
+## Docker 部署
+
+```powershell
+Copy-Item .env.docker.example .env
+docker compose up -d --build
+```
+
+首次建表、初始数据导入、升级、回滚和备份流程见 [DEPLOYMENT.md](./DEPLOYMENT.md)。线上写库前必须先确认。
+
+生产环境通过 GitHub Actions 自动部署到 `example.test`，VPS 专用 Compose 文件位于 `deploy/docker-compose.yml`。
+
 ## 环境变量
 
 复制 `.env.example` 为 `.env`，至少确认：
@@ -66,6 +77,7 @@ YOUTUBE_API_KEY="your_youtube_api_key_here"
 YOUTUBE_PLAYLIST_ID="PLWAtCzJzHiz8e1itWCrJuMVqBDYUI6yd7"
 OPENAI_API_KEY="your_openai_api_key_here"
 OPENAI_MODEL="gpt-4o-mini"
+# NEXT_PUBLIC_BAIDU_TONGJI_ID="your_baidu_tongji_id_here"
 ```
 
 如果需要登录态字幕，优先导出 cookie 文件后配置：
@@ -140,7 +152,7 @@ npm run dev -- --port 3001
 - [quick-start.md](./quick-start.md)：最短本地启动步骤。
 - [BACKFILL_GUIDE.md](./BACKFILL_GUIDE.md)：字幕抓取、ASR、AI 清洗和状态指标。
 - [TESTING.md](./TESTING.md)：自动化、API、页面和数据验收。
-- [DEPLOYMENT.md](./DEPLOYMENT.md)：生产部署与线上数据库边界。
+- [DEPLOYMENT.md](./DEPLOYMENT.md)：Docker 部署、升级、回滚、备份与线上数据库边界。
 - [AGENTS.md](./AGENTS.md)：维护者和 Agent 工作规则。
 
 `START_HERE.md`、`PROJECT_STATUS.md`、`PROJECT_SUMMARY.md`、`IMPLEMENTATION_REPORT.md`、`IMPLEMENTATION_SUMMARY.md` 只作为历史或辅助材料；如果与上面的入口文档冲突，以入口文档为准。

@@ -89,6 +89,8 @@ const themeScript = `
 })();
 `
 
+const baiduTongjiId = process.env.NEXT_PUBLIC_BAIDU_TONGJI_ID?.trim()
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -102,6 +104,13 @@ export default function RootLayout({
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: themeScript }}
         />
+        {baiduTongjiId ? (
+          <Script
+            id="baidu-tongji"
+            src={`https://hm.baidu.com/hm.js?${baiduTongjiId}`}
+            strategy="afterInteractive"
+          />
+        ) : null}
       </head>
       <body className="min-h-full antialiased">{children}</body>
     </html>

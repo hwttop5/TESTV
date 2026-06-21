@@ -3,7 +3,7 @@ import ProductList from './components/ProductList'
 import InstallPrompt from './components/InstallPrompt'
 import ThemeToggle from './components/ThemeToggle'
 import GitHubLink from './components/GitHubLink'
-import { getProductCatalogPage, normalizePageSize, type SortMode } from '@/lib/product-catalog'
+import { getProductCatalogPage, normalizePageSize, normalizeSortMode } from '@/lib/product-catalog'
 import { getProductCategoryLabel, normalizeProductCategoryKey } from '@/lib/product-category'
 import type { ProductSummary } from '@/lib/review-types'
 import { prisma } from '@/lib/prisma'
@@ -96,7 +96,7 @@ export default async function Home({
   searchParams: HomeSearchParams
 }) {
   const params = await searchParams
-  const sort: SortMode = firstParam(params.sort) === 'date' ? 'date' : 'score'
+  const sort = normalizeSortMode(firstParam(params.sort))
   const q = firstParam(params.q).trim()
   const page = readPage(firstParam(params.page))
   const category = normalizeProductCategoryKey(firstParam(params.category))

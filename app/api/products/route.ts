@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getProductCatalogPage, type SortMode } from '@/lib/product-catalog'
+import { getProductCatalogPage, normalizeSortMode } from '@/lib/product-catalog'
 import { normalizeProductCategoryKey } from '@/lib/product-category'
 
 export const dynamic = 'force-dynamic'
@@ -16,7 +16,7 @@ function readPositiveInt(value: string | null, fallback: number, max: number): n
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
-  const sort: SortMode = searchParams.get('sort') === 'date' ? 'date' : 'score'
+  const sort = normalizeSortMode(searchParams.get('sort'))
   const q = (searchParams.get('q') || '').trim()
   const page = readPositiveInt(searchParams.get('page'), 1, 10_000)
   const pageSize = readPositiveInt(searchParams.get('pageSize'), 20, 50)

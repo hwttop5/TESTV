@@ -3,8 +3,10 @@ import { matchesProductCategory, normalizeProductCategoryKey, type ProductCatego
 import { prisma } from './prisma'
 import { compareScoreValueDesc } from './scoring'
 import { toProductSummary, type ProductSummary } from './review-types'
+import type { SortMode } from './catalog-sort'
 
-export type SortMode = 'score' | 'date'
+export { DEFAULT_SORT_MODE, normalizeSortMode } from './catalog-sort'
+export type { SortMode } from './catalog-sort'
 
 // Re-export pagination constants from the dependency-free module so existing
 // server-side imports from this file keep working.

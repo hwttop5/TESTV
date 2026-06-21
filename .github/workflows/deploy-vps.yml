@@ -1,0 +1,150 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps-testv-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$VPS_HOST"
+          test -n "$VPS_USER"
+          test -n "$VPS_SSH_KEY"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H -p 22 "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync code to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          rsync -az --delete --delay-updates \
+            --exclude '.git/' \
+            --exclude 'node_modules/' \
+            --exclude '.next/' \
+            --exclude '.env' \
+            --exclude '.env.*' \
+            --exclude 'deploy/.env' \
+            -e "ssh -i ~/.ssh/deploy_key -p 22" \
+            ./ "$VPS_USER@$VPS_HOST:/opt/stacks/testv/"
+
+      - name: Configure production environment
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          NEXT_PUBLIC_BAIDU_TONGJI_ID: ${{ vars.NEXT_PUBLIC_BAIDU_TONGJI_ID || secrets.NEXT_PUBLIC_BAIDU_TONGJI_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$POSTGRES_PASSWORD"
+          encoded_password="$(printf '%s' "$POSTGRES_PASSWORD" | base64 -w 0)"
+          encoded_tongji="$(printf '%s' "${NEXT_PUBLIC_BAIDU_TONGJI_ID:-}" | base64 -w 0)"
+          ssh -i ~/.ssh/deploy_key -p 22 "$VPS_USER@$VPS_HOST" \
+            "POSTGRES_PASSWORD_B64='$encoded_password' BAIDU_TONGJI_ID_B64='$encoded_tongji' sh -s" <<'REMOTE_SCRIPT'
+          set -eu
+          stack_dir="/opt/stacks/testv"
+          env_file="$stack_dir/deploy/.env"
+          postgres_password="$(printf '%s' "$POSTGRES_PASSWORD_B64" | base64 -d)"
+          baidu_tongji_id="$(printf '%s' "$BAIDU_TONGJI_ID_B64" | base64 -d)"
+
+          mkdir -p "$stack_dir/deploy" /srv/testv/postgres /srv/testv/backups
+          touch "$env_file"
+          chmod 600 "$env_file" || true
+
+          set_env_var() {
+            key="$1"
+            value="$2"
+            tmp_file="$(mktemp)"
+            awk -v key="$key" -v value="$value" '
+              BEGIN { found = 0 }
+              $0 ~ "^" key "=" {
+                print key "=" value
+                found = 1
+                next
+              }
+              { print }
+              END {
+                if (!found) {
+                  print key "=" value
+                }
+              }
+            ' "$env_file" > "$tmp_file"
+            cat "$tmp_file" > "$env_file"
+            rm -f "$tmp_file"
+          }
+
+          set_env_var NEXT_PUBLIC_APP_URL "https://example.test"
+          set_env_var NEXT_PUBLIC_BAIDU_TONGJI_ID "$baidu_tongji_id"
+          set_env_var POSTGRES_DB "testv"
+          set_env_var POSTGRES_USER "testv"
+          set_env_var POSTGRES_PASSWORD "$postgres_password"
+          set_env_var YOUTUBE_PLAYLIST_ID "PLWAtCzJzHiz8e1itWCrJuMVqBDYUI6yd7"
+          set_env_var OPENAI_MODEL "gpt-4o-mini"
+
+          echo "Configured $env_file"
+          REMOTE_SCRIPT
+
+      - name: Build and restart Docker stack
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -p 22 "$VPS_USER@$VPS_HOST" <<'REMOTE_SCRIPT'
+          set -eu
+          cd /opt/stacks/testv
+          docker compose --env-file deploy/.env -f deploy/docker-compose.yml config >/tmp/testv.compose.yml
+          docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build --remove-orphans
+          docker compose --env-file deploy/.env -f deploy/docker-compose.yml ps
+          REMOTE_SCRIPT
+
+      - name: Smoke test
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -p 22 "$VPS_USER@$VPS_HOST" <<'REMOTE_SCRIPT'
+          set -eu
+          cd /opt/stacks/testv
+          for attempt in $(seq 1 30); do
+            if docker compose --env-file deploy/.env -f deploy/docker-compose.yml exec -T app \
+              node -e "fetch('http://127.0.0.1:3000/api/health').then((r)=>process.exit(r.status < 500 ? 0 : 1)).catch(()=>process.exit(1))"; then
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+          REMOTE_SCRIPT
+
+          if getent hosts example.test >/dev/null; then
+            for attempt in $(seq 1 30); do
+              if curl --retry 3 --retry-delay 5 --retry-all-errors -fsS https://example.test/ >/dev/null; then
+                exit 0
+              fi
+              sleep 5
+            done
+            exit 1
+          fi
+          echo "example.test is not resolvable yet; VPS-local smoke test passed."
