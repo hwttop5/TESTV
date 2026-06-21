@@ -1,6 +1,6 @@
 # Agent 规则与提交约束实施总结（历史材料）
 
-这个文件记录的是早期为仓库加入 `AGENTS.md`、Conventional Commits 和本地 commit hook 的过程。当前维护规则已经沉淀到 [AGENTS.md](./AGENTS.md)。
+这个文件记录的是早期为仓库加入 `AGENTS.md`、Conventional Commits 和本地 commit hook 的过程。当前维护规则已经沉淀到 [AGENTS.md](../../AGENTS.md)。
 
 请以当前 `AGENTS.md` 为准：
 

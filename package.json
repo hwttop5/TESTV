@@ -35,7 +35,8 @@
     "backfill:audit-gaps": "tsx scripts/audit-product-gaps.ts",
     "backfill:suggest-review": "tsx scripts/suggest-product-backfill.ts",
     "backfill:apply-review": "tsx scripts/apply-product-backfill-review.ts",
-    "backfill:prices": "tsx scripts/backfill-prices.ts"
+    "backfill:prices": "tsx scripts/backfill-prices.ts",
+    "privacy:check": "node scripts/privacy-check.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -1,6 +1,6 @@
 # 快速启动
 
-这份文档只保留最短启动路径。完整数据补抓和清洗请看 [BACKFILL_GUIDE.md](./BACKFILL_GUIDE.md)。
+这份文档只保留最短启动路径。完整数据补抓和清洗请看 [backfill-guide.md](./backfill-guide.md)。
 
 ## 1. 安装依赖
 

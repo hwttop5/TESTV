@@ -7,6 +7,7 @@ import {
   productGapRowsToCsv,
   productGapRowsToSummary,
 } from '../lib/product-backfill-review'
+import { isPublicCatalogProductId } from '../lib/product-visibility'
 
 const OUTPUT_DIR = path.join(process.cwd(), 'data', 'backfill-review')
 const JSONL_PATH = path.join(OUTPUT_DIR, 'product-gaps.jsonl')
@@ -64,6 +65,7 @@ async function main() {
   })
 
   const selectedProducts = products
+    .filter((product) => isPublicCatalogProductId(product.id))
     .filter((product) => matchesTarget(product, target))
     .slice(offset, offset + limit)
   const rows = selectedProducts.map((product) => buildProductGapReviewRow(product))

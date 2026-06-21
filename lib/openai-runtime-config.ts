@@ -195,7 +195,7 @@ export async function resolveOpenAiRuntimeConfigs(options: {
     configs.push(envConfig)
   }
 
-  if (process.env.USE_CODEX_MANAGER_OPENAI === 'false') {
+  if (process.env.USE_CODEX_MANAGER_OPENAI !== 'true') {
     return configs
   }
 

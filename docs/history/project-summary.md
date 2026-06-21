@@ -12,10 +12,10 @@
 
 最新文档入口：
 
-- [README.md](./README.md)
-- [BACKFILL_GUIDE.md](./BACKFILL_GUIDE.md)
-- [TESTING.md](./TESTING.md)
-- [DEPLOYMENT.md](./DEPLOYMENT.md)
-- [AGENTS.md](./AGENTS.md)
+- [README.md](../../README.md)
+- [backfill-guide.md](../backfill-guide.md)
+- [testing.md](../testing.md)
+- [deployment.md](../deployment.md)
+- [AGENTS.md](../../AGENTS.md)
 
 如果本文件与入口文档冲突，以入口文档为准。

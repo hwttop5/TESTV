@@ -4,11 +4,11 @@
 
 当前维护请以这些文档为准：
 
-- [README.md](./README.md)
-- [BACKFILL_GUIDE.md](./BACKFILL_GUIDE.md)
-- [TESTING.md](./TESTING.md)
-- [DEPLOYMENT.md](./DEPLOYMENT.md)
-- [AGENTS.md](./AGENTS.md)
+- [README.md](../../README.md)
+- [backfill-guide.md](../backfill-guide.md)
+- [testing.md](../testing.md)
+- [deployment.md](../deployment.md)
+- [AGENTS.md](../../AGENTS.md)
 
 当前数据和公开规则：
 

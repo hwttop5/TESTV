@@ -62,12 +62,14 @@ DRY_RUN=true LIMIT=20 npm run sync:copy-backfill
 
 ## 文档分工
 
-- `README.md` 面向用户和新维护者，保持紧凑，只写项目入口、常用命令和关键规则。
-- `AGENTS.md` 面向维护者和 Agent，写工作流、数据边界和清洗规则。
-- `BACKFILL_GUIDE.md` 写字幕抓取、ASR、AI 清洗、资产目录和状态指标。
-- `TESTING.md` 与 `VERIFICATION_CHECKLIST.md` 写验收命令、页面/API/数据检查。
-- `DEPLOYMENT.md` 写部署和生产数据库安全边界。
-- `START_HERE.md`、`PROJECT_STATUS.md`、`PROJECT_SUMMARY.md`、`IMPLEMENTATION_*` 只作为历史或辅助材料，不作为最新事实来源。
+- `README.md` 面向用户和新维护者，保持紧凑，只写项目入口、最短启动命令、文档索引和关键安全边界。
+- `AGENTS.md` 面向维护者和 Agent，写工作流、数据边界和清洗规则；`CLAUDE.md` 继续引用它，不作为普通文档迁移。
+- `docs/README.md` 是普通项目文档主索引；AI 查项目文档时先从这里进入。
+- `docs/quick-start.md` 写最短本地启动步骤。
+- `docs/backfill-guide.md` 写字幕抓取、ASR、AI 清洗、资产目录和状态指标。
+- `docs/testing.md` 与 `docs/verification-checklist.md` 写验收命令、页面/API/数据检查。
+- `docs/deployment.md` 写部署和生产数据库安全边界。
+- `docs/history/*` 只作为历史或辅助材料，不作为最新事实来源。
 
 ## 验证命令
 

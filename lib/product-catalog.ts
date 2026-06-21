@@ -4,6 +4,7 @@ import { prisma } from './prisma'
 import { compareScoreValueDesc } from './scoring'
 import { toProductSummary, type ProductSummary } from './review-types'
 import type { SortMode } from './catalog-sort'
+import { getPublicCatalogProductWhere } from './product-visibility'
 
 export { DEFAULT_SORT_MODE, normalizeSortMode } from './catalog-sort'
 export type { SortMode } from './catalog-sort'
@@ -102,9 +103,12 @@ function compareBaseProducts(left: BaseListProduct, right: BaseListProduct, sort
 }
 
 function buildWhere(q: string): Prisma.ProductWhereInput {
-  if (!q) return {}
+  const publicCatalogWhere = getPublicCatalogProductWhere()
+
+  if (!q) return publicCatalogWhere
 
   return {
+    ...publicCatalogWhere,
     OR: [
       {
         productNameZh: {

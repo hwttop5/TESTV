@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma'
 import { toProductDetail, toProductSummary } from '../lib/review-types'
 import { hasEnglishSentence, hasPublicTextIssue, isLikelyTraditionalText } from '../lib/text-normalization'
 import { backfillTranscriptStageState } from '../lib/transcript-state-backfill'
+import { getPublicCatalogProductWhere } from '../lib/product-visibility'
 
 type StatusRow = {
   label: string
@@ -66,6 +67,7 @@ async function main() {
   ])
 
   const productsForDisplayAudit = await prisma.product.findMany({
+    where: getPublicCatalogProductWhere(),
     include: {
       video: {
         select: {

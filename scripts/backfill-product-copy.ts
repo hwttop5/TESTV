@@ -14,6 +14,7 @@ import {
 } from '../lib/review-types'
 import { formatScoreValue } from '../lib/scoring'
 import { buildTranscriptParagraphs } from '../lib/transcript-insights'
+import { isPublicCatalogProductId } from '../lib/product-visibility'
 import {
   hasPublicTextIssue,
   isCleanPublicText,
@@ -497,6 +498,7 @@ async function main() {
   })
 
   const candidates = products
+    .filter((product) => isPublicCatalogProductId(product.id))
     .filter((product) => productMatchesTarget(product, target))
     .map((product) => ({
       product,

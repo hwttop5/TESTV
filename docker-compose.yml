@@ -24,7 +24,7 @@ services:
       args:
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
         NEXT_PUBLIC_BAIDU_TONGJI_ID: ${NEXT_PUBLIC_BAIDU_TONGJI_ID:-}
-    image: testv-app:latest
+    image: ${APP_IMAGE:-testv-app:latest}
     container_name: testv_app
     restart: unless-stopped
     depends_on:

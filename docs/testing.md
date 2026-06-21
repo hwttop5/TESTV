@@ -133,5 +133,5 @@ npm run export:transcripts
 
 - README 是用户入口，不放冗长运维细节。
 - AGENTS 是维护者规则，不放一次性状态报告。
-- BACKFILL_GUIDE 与 `package.json` 脚本名一致。
+- docs/backfill-guide.md 与 `package.json` 脚本名一致。
 - 不再出现旧数量口径、公开证据区、百分制公开评分或乱码段落。

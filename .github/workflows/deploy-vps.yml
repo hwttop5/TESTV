@@ -1,4 +1,4 @@
-name: Deploy to VPS
+﻿name: Deploy to VPS
 
 on:
   push:
@@ -14,6 +14,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      DEFAULT_STACK_DIR: /opt/stacks/example-app
+      DEFAULT_DATA_DIR: /srv/example-app
+      DEFAULT_CADDY_NETWORK: caddy_proxy
+      DEFAULT_APP_NETWORK_ALIAS: app
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -37,8 +42,11 @@ jobs:
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_STACK_DIR: ${{ vars.VPS_STACK_DIR }}
         run: |
           set -euo pipefail
+          remote_stack_dir="${VPS_STACK_DIR:-$DEFAULT_STACK_DIR}"
+          ssh -i ~/.ssh/deploy_key -p 22 "$VPS_USER@$VPS_HOST" "mkdir -p '$remote_stack_dir'"
           rsync -az --delete --delay-updates \
             --exclude '.git/' \
             --exclude 'node_modules/' \
@@ -47,7 +55,7 @@ jobs:
             --exclude '.env.*' \
             --exclude 'deploy/.env' \
             -e "ssh -i ~/.ssh/deploy_key -p 22" \
-            ./ "$VPS_USER@$VPS_HOST:/opt/stacks/testv/"
+            ./ "$VPS_USER@$VPS_HOST:$remote_stack_dir/"
 
       - name: Configure production environment
         env:
@@ -55,20 +63,33 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           NEXT_PUBLIC_BAIDU_TONGJI_ID: ${{ vars.NEXT_PUBLIC_BAIDU_TONGJI_ID || secrets.NEXT_PUBLIC_BAIDU_TONGJI_ID }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          VPS_STACK_DIR: ${{ vars.VPS_STACK_DIR }}
+          VPS_DATA_DIR: ${{ vars.VPS_DATA_DIR }}
+          CADDY_NETWORK: ${{ vars.CADDY_NETWORK }}
+          APP_NETWORK_ALIAS: ${{ vars.APP_NETWORK_ALIAS }}
         run: |
           set -euo pipefail
           test -n "$POSTGRES_PASSWORD"
           encoded_password="$(printf '%s' "$POSTGRES_PASSWORD" | base64 -w 0)"
           encoded_tongji="$(printf '%s' "${NEXT_PUBLIC_BAIDU_TONGJI_ID:-}" | base64 -w 0)"
+          encoded_app_url="$(printf '%s' "${NEXT_PUBLIC_APP_URL:-}" | base64 -w 0)"
           ssh -i ~/.ssh/deploy_key -p 22 "$VPS_USER@$VPS_HOST" \
-            "POSTGRES_PASSWORD_B64='$encoded_password' BAIDU_TONGJI_ID_B64='$encoded_tongji' sh -s" <<'REMOTE_SCRIPT'
+            "POSTGRES_PASSWORD_B64='$encoded_password' BAIDU_TONGJI_ID_B64='$encoded_tongji' APP_URL_B64='$encoded_app_url' VPS_STACK_DIR='${VPS_STACK_DIR:-$DEFAULT_STACK_DIR}' VPS_DATA_DIR='${VPS_DATA_DIR:-$DEFAULT_DATA_DIR}' CADDY_NETWORK='${CADDY_NETWORK:-$DEFAULT_CADDY_NETWORK}' APP_NETWORK_ALIAS='${APP_NETWORK_ALIAS:-$DEFAULT_APP_NETWORK_ALIAS}' sh -s" <<'REMOTE_SCRIPT'
           set -eu
-          stack_dir="/opt/stacks/testv"
+          stack_dir="${VPS_STACK_DIR:-/opt/stacks/example-app}"
+          data_dir="${VPS_DATA_DIR:-/srv/example-app}"
+          caddy_network="${CADDY_NETWORK:-caddy_proxy}"
+          app_network_alias="${APP_NETWORK_ALIAS:-app}"
           env_file="$stack_dir/deploy/.env"
           postgres_password="$(printf '%s' "$POSTGRES_PASSWORD_B64" | base64 -d)"
           baidu_tongji_id="$(printf '%s' "$BAIDU_TONGJI_ID_B64" | base64 -d)"
+          app_url="$(printf '%s' "$APP_URL_B64" | base64 -d)"
+          if [ -z "$app_url" ]; then
+            app_url="https://example.com"
+          fi
 
-          mkdir -p "$stack_dir/deploy" /srv/testv/postgres /srv/testv/backups
+          mkdir -p "$stack_dir/deploy" "$data_dir/postgres" "$data_dir/backups"
           touch "$env_file"
           chmod 600 "$env_file" || true
 
@@ -94,13 +115,16 @@ jobs:
             rm -f "$tmp_file"
           }
 
-          set_env_var NEXT_PUBLIC_APP_URL "https://example.test"
+          set_env_var NEXT_PUBLIC_APP_URL "$app_url"
           set_env_var NEXT_PUBLIC_BAIDU_TONGJI_ID "$baidu_tongji_id"
           set_env_var POSTGRES_DB "testv"
           set_env_var POSTGRES_USER "testv"
           set_env_var POSTGRES_PASSWORD "$postgres_password"
           set_env_var YOUTUBE_PLAYLIST_ID "PLWAtCzJzHiz8e1itWCrJuMVqBDYUI6yd7"
           set_env_var OPENAI_MODEL "gpt-4o-mini"
+          set_env_var VPS_DATA_DIR "$data_dir"
+          set_env_var CADDY_NETWORK "$caddy_network"
+          set_env_var APP_NETWORK_ALIAS "$app_network_alias"
 
           echo "Configured $env_file"
           REMOTE_SCRIPT
@@ -109,11 +133,13 @@ jobs:
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_STACK_DIR: ${{ vars.VPS_STACK_DIR }}
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/deploy_key -p 22 "$VPS_USER@$VPS_HOST" <<'REMOTE_SCRIPT'
+          ssh -i ~/.ssh/deploy_key -p 22 "$VPS_USER@$VPS_HOST" \
+            "VPS_STACK_DIR='${VPS_STACK_DIR:-$DEFAULT_STACK_DIR}' sh -s" <<'REMOTE_SCRIPT'
           set -eu
-          cd /opt/stacks/testv
+          cd "${VPS_STACK_DIR:-/opt/stacks/example-app}"
           docker compose --env-file deploy/.env -f deploy/docker-compose.yml config >/tmp/testv.compose.yml
           docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build --remove-orphans
           docker compose --env-file deploy/.env -f deploy/docker-compose.yml ps
@@ -123,11 +149,14 @@ jobs:
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_STACK_DIR: ${{ vars.VPS_STACK_DIR }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/deploy_key -p 22 "$VPS_USER@$VPS_HOST" <<'REMOTE_SCRIPT'
+          ssh -i ~/.ssh/deploy_key -p 22 "$VPS_USER@$VPS_HOST" \
+            "VPS_STACK_DIR='${VPS_STACK_DIR:-$DEFAULT_STACK_DIR}' sh -s" <<'REMOTE_SCRIPT'
           set -eu
-          cd /opt/stacks/testv
+          cd "${VPS_STACK_DIR:-/opt/stacks/example-app}"
           for attempt in $(seq 1 30); do
             if docker compose --env-file deploy/.env -f deploy/docker-compose.yml exec -T app \
               node -e "fetch('http://127.0.0.1:3000/api/health').then((r)=>process.exit(r.status < 500 ? 0 : 1)).catch(()=>process.exit(1))"; then
@@ -138,13 +167,16 @@ jobs:
           exit 1
           REMOTE_SCRIPT
 
-          if getent hosts example.test >/dev/null; then
-            for attempt in $(seq 1 30); do
-              if curl --retry 3 --retry-delay 5 --retry-all-errors -fsS https://example.test/ >/dev/null; then
-                exit 0
-              fi
-              sleep 5
-            done
-            exit 1
+          if [ -n "${NEXT_PUBLIC_APP_URL:-}" ]; then
+            host="$(printf '%s' "$NEXT_PUBLIC_APP_URL" | sed -E 's#^https?://([^/]+)/?.*#\1#')"
+            if [ -n "$host" ] && getent hosts "$host" >/dev/null; then
+              for attempt in $(seq 1 30); do
+                if curl --retry 3 --retry-delay 5 --retry-all-errors -fsS "$NEXT_PUBLIC_APP_URL/" >/dev/null; then
+                  exit 0
+                fi
+                sleep 5
+              done
+              exit 1
+            fi
           fi
-          echo "example.test is not resolvable yet; VPS-local smoke test passed."
+          echo "Public app URL is not configured or not resolvable yet; VPS-local smoke test passed."

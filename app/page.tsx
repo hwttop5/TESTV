@@ -16,6 +16,7 @@ import {
   SITE_NAME,
   jsonLdScript,
 } from '@/lib/seo'
+import { getPublicCatalogProductWhere } from '@/lib/product-visibility'
 
 type HomeSearchParams = Promise<{
   sort?: string | string[]
@@ -83,7 +84,9 @@ export async function generateMetadata({
 }
 
 async function getSyncStats() {
-  const count = await prisma.product.count()
+  const count = await prisma.product.count({
+    where: getPublicCatalogProductWhere(),
+  })
 
   return {
     products: count,

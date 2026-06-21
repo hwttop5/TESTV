@@ -8,6 +8,7 @@ import {
   shouldSkipPriceExtraction,
   type PriceExtractionResult,
 } from '../lib/price-extraction'
+import { isPublicCatalogProductId } from '../lib/product-visibility'
 import { parsePositiveInt } from '../lib/review-types'
 
 function isEnabled(value: string | undefined, fallback = false): boolean {
@@ -243,6 +244,10 @@ async function main() {
   }
 
   for (const product of products) {
+    if (!isPublicCatalogProductId(product.id)) {
+      continue
+    }
+
     summary.scanned += 1
 
     if (onlyMissing && product.priceValue != null && product.priceRaw) {

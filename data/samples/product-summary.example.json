@@ -1,0 +1,21 @@
+{
+  "id": "product_example_001",
+  "videoId": "video_example_001",
+  "nameZh": "示例产品",
+  "nameEn": "Example Product",
+  "brand": "Example Brand",
+  "category": "other",
+  "scoreValue": 8.4,
+  "prosZh": [
+    "做工稳定",
+    "核心功能表现明确",
+    "适合特定使用场景"
+  ],
+  "consZh": [
+    "价格偏高",
+    "配件需要单独购买"
+  ],
+  "confidence": 0.82,
+  "contentStatus": "complete",
+  "note": "脱敏结构样例，不对应真实产品或真实字幕"
+}

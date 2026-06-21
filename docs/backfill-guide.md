@@ -204,3 +204,13 @@ npm run sync:status
 ### 线上数据需要同步
 
 暂停操作，先向用户说明数据库地址、写入范围、备份方案和回滚路径。未经确认不要写线上库。
+
+## 开源仓库注意事项
+
+字幕、ASR、yt-dlp、Bilibili 和浏览器抓取产物默认属于本地私有资产，不随开源仓库提交。data/ 目录默认被忽略，只允许保留 data/README.md 和 data/samples/** 里的脱敏样例。
+
+Cookie 只能通过本地私有文件提供，例如 YTDLP_COOKIES_FILE 或 BILIBILI_COOKIE_FILE。不要把 cookie 内容、浏览器 profile、原始抓取响应、ASR 响应或本机绝对路径提交到仓库。
+
+如需导出浏览器 cookie，请在本机使用私有脚本或浏览器插件完成；这类脚本不随开源仓库发布，也不要提交导出的 cookie 文件。
+
+AI 回填默认只读取显式配置的 OPENAI_API_KEY。如需临时复用本机 Codex Manager 配置，必须显式设置 USE_CODEX_MANAGER_OPENAI=true，并在提交前运行 npm run privacy:check。

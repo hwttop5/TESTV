@@ -10,12 +10,12 @@ rg --files
 
 最新入口文档：
 
-- [README.md](./README.md)
-- [quick-start.md](./quick-start.md)
-- [BACKFILL_GUIDE.md](./BACKFILL_GUIDE.md)
-- [TESTING.md](./TESTING.md)
-- [VERIFICATION_CHECKLIST.md](./VERIFICATION_CHECKLIST.md)
-- [DEPLOYMENT.md](./DEPLOYMENT.md)
-- [AGENTS.md](./AGENTS.md)
+- [README.md](../../README.md)
+- [quick-start.md](../quick-start.md)
+- [backfill-guide.md](../backfill-guide.md)
+- [testing.md](../testing.md)
+- [verification-checklist.md](../verification-checklist.md)
+- [deployment.md](../deployment.md)
+- [AGENTS.md](../../AGENTS.md)
 
 如果本文件与入口文档或实际仓库结构冲突，以实际文件和入口文档为准。

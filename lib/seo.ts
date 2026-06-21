@@ -1,5 +1,5 @@
 export const DEFAULT_DEV_SITE_URL = 'http://localhost:3000'
-export const DEFAULT_PROD_SITE_URL = 'https://example.test'
+export const DEFAULT_PROD_SITE_URL = 'https://example.com'
 const SITE_NAME = 'TESTV值不值得买'
 const SITE_DESCRIPTION = 'TESTV 产品评测目录，收录视频评分、优缺点、文字版和购买参考，支持搜索、分类筛选和按评分排序。'
 const SITE_KEYWORDS = [

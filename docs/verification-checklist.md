@@ -109,6 +109,6 @@ npm run sync:status
 
 - [ ] `README.md` 与当前功能一致。
 - [ ] `AGENTS.md` 包含项目维护规则。
-- [ ] `BACKFILL_GUIDE.md` 与 `package.json` 脚本名一致。
-- [ ] `TESTING.md` 与本清单口径一致。
+- [ ] `docs/backfill-guide.md` 与 `package.json` 脚本名一致。
+- [ ] `docs/testing.md` 与本清单口径一致。
 - [ ] 不再出现旧数量口径、公开证据区、百分制公开评分和乱码核心段落。

@@ -8,6 +8,7 @@ import {
   normalizeSuggestion,
   type ProductBackfillSuggestion,
 } from '../lib/product-backfill-review'
+import { isPublicCatalogProductId } from '../lib/product-visibility'
 
 const DEFAULT_REVIEW_FILE = path.join(process.cwd(), 'data', 'backfill-review', 'product-suggestions.jsonl')
 
@@ -39,6 +40,7 @@ async function main() {
   const target = (process.env.TARGET_PRODUCT || '').trim()
 
   const suggestions = (await readSuggestions(reviewFile))
+    .filter((suggestion) => isPublicCatalogProductId(suggestion.productId))
     .filter((suggestion) => !target || [
       suggestion.productId,
       suggestion.youtubeId,

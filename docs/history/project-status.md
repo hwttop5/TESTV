@@ -2,11 +2,11 @@
 
 这个文件只作为历史辅助材料保留。当前最新状态请优先查看：
 
-- [README.md](./README.md)
-- [BACKFILL_GUIDE.md](./BACKFILL_GUIDE.md)
-- [TESTING.md](./TESTING.md)
-- [VERIFICATION_CHECKLIST.md](./VERIFICATION_CHECKLIST.md)
-- [AGENTS.md](./AGENTS.md)
+- [README.md](../../README.md)
+- [backfill-guide.md](../backfill-guide.md)
+- [testing.md](../testing.md)
+- [verification-checklist.md](../verification-checklist.md)
+- [AGENTS.md](../../AGENTS.md)
 
 ## 当前状态获取方式
 

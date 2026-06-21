@@ -1,0 +1,18 @@
+{
+  "source": "sample",
+  "videoId": "video_example_001",
+  "title": "示例视频标题",
+  "capturedAt": "2026-01-01T00:00:00.000Z",
+  "segments": [
+    {
+      "start": 0,
+      "duration": 3.2,
+      "text": "这里是脱敏后的字幕片段，仅用于说明格式。"
+    },
+    {
+      "start": 3.2,
+      "duration": 4.1,
+      "text": "不要在开源仓库提交真实字幕全文、cookie 或接口响应。"
+    }
+  ]
+}

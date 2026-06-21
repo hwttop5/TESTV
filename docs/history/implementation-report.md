@@ -4,12 +4,12 @@
 
 当前最新事实请查看：
 
-- [README.md](./README.md)
-- [BACKFILL_GUIDE.md](./BACKFILL_GUIDE.md)
-- [TESTING.md](./TESTING.md)
-- [VERIFICATION_CHECKLIST.md](./VERIFICATION_CHECKLIST.md)
-- [DEPLOYMENT.md](./DEPLOYMENT.md)
-- [AGENTS.md](./AGENTS.md)
+- [README.md](../../README.md)
+- [backfill-guide.md](../backfill-guide.md)
+- [testing.md](../testing.md)
+- [verification-checklist.md](../verification-checklist.md)
+- [deployment.md](../deployment.md)
+- [AGENTS.md](../../AGENTS.md)
 
 当前公开口径：
 

@@ -14,6 +14,7 @@ import {
   type ProductBackfillSuggestion,
   type ProductGapReviewRow,
 } from '../lib/product-backfill-review'
+import { isPublicCatalogProductId } from '../lib/product-visibility'
 
 const DEFAULT_AUDIT_FILE = path.join(process.cwd(), 'data', 'backfill-review', 'product-gaps.jsonl')
 const DEFAULT_OUTPUT_FILE = path.join(process.cwd(), 'data', 'backfill-review', 'product-suggestions.jsonl')
@@ -185,6 +186,7 @@ async function main() {
 
   const auditRows = await readAuditRows(auditFile)
   const selectedRows = auditRows
+    .filter((row) => isPublicCatalogProductId(row.productId))
     .filter((row) => !target || [
       row.productId,
       row.youtubeId,

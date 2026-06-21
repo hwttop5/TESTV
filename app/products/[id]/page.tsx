@@ -15,6 +15,7 @@ import {
   SITE_NAME,
   truncateMetaDescription,
 } from '@/lib/seo'
+import { isPublicCatalogProductId } from '@/lib/product-visibility'
 
 // The local Windows sandbox can fail on the ISR/prerender worker path with
 // `spawn EPERM`, so keep detail pages request-rendered from stored data.
@@ -65,6 +66,13 @@ const getProductForPage = cache(async (id: string) => {
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { id } = await params
+  if (!isPublicCatalogProductId(id)) {
+    return {
+      title: `产品不存在 | ${SITE_NAME}`,
+      robots: { index: false, follow: false },
+    }
+  }
+
   const product = await getProductForPage(id)
 
   if (!product) {
@@ -113,6 +121,10 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params
+  if (!isPublicCatalogProductId(id)) {
+    notFound()
+  }
+
   const product = await getProductForPage(id)
 
   if (!product) {
