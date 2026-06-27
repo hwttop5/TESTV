@@ -1,23 +1,23 @@
 # 项目文档索引
 
-这是 TESTV 项目的普通文档总索引。AI 或维护者需要查项目上下文时，优先从这里进入；根目录 `README.md` 只保留最短入口，`AGENTS.md` / `CLAUDE.md` 保留在根目录供 Agent 自动读取。
+这是 TESTV 项目的普通文档总索引。需要查项目上下文时，优先从这里进入；根目录 `README.md` 保留最短入口，`AGENTS.md` / `CLAUDE.md` 保留在根目录供 Agent 自动读取。
 
 ## 快速开始
 
-- [quick-start.md](./quick-start.md)：最短本地启动步骤。
+- [quick-start.md](./quick-start.md)：先跑只读 JSON 公开站点，再按需启动维护端数据库。
 - [history/start-here.md](./history/start-here.md)：历史入口索引，仅作阶段记录。
 
 ## 部署运维
 
-- [deployment.md](./deployment.md)：Docker Compose、VPS 自动部署、升级、回滚、备份和线上数据库安全边界。
+- [deployment.md](./deployment.md)：Docker Compose、VPS 自动部署、升级、回滚和只读 JSON 生产边界。
 
 ## 数据与回填
 
-- [backfill-guide.md](./backfill-guide.md)：字幕抓取、ASR、AI 清洗、资产目录和状态指标。
+- [backfill-guide.md](./backfill-guide.md)：字幕抓取、ASR、AI 清洗、资产目录、状态指标和公开快照导出。
 
 ## 测试验收
 
-- [testing.md](./testing.md)：静态检查、API、页面和数据验收说明。
+- [testing.md](./testing.md)：静态检查、公开快照、API、页面和隐私检查说明。
 - [verification-checklist.md](./verification-checklist.md)：提交、推送或部署前的检查清单。
 
 ## 历史资料

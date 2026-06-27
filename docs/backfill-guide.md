@@ -125,6 +125,32 @@ npm run sync:extract
 
 抽取结果应落到同一个 `videoId` 对应的 `Product` 记录。公开评分使用视频里的 10 分制 `scoreValue`；没有明确评分时允许为空。
 
+## 公开目录快照导出
+
+生产公开站点不直接读取维护端数据库。完成同步、字幕补齐、产品抽取和必要的文案清洗后，先检查状态，再导出脱敏 JSON 快照：
+
+```powershell
+npm run sync:status
+DRY_RUN=true npm run export:public-catalog
+npm run export:public-catalog
+```
+
+默认输出文件：
+
+```text
+public-catalog/products.json
+```
+
+导出脚本只写公开页面和 API 需要的字段，包括产品展示信息、视频元信息、价格、评分、状态、分类、链接和展示用字幕段落。不要把完整原始 `Transcript.content`、抓取日志、cookie 路径、ASR 响应或 `data/**` 原始资产路径发布到公开快照里。
+
+导出后运行：
+
+```powershell
+npm run privacy:check
+```
+
+如果校验失败，先修复维护端展示字段或导出逻辑，不要手工伪造缺失观点。
+
 ## AI 文案清洗回填
 
 当产品名、标题、优点、缺点存在空值、繁体、英文整句、乱码或过长口语句时，使用：

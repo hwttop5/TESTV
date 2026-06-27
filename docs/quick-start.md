@@ -1,6 +1,6 @@
 # 快速启动
 
-这份文档只保留最短启动路径。完整数据补抓和清洗请看 [backfill-guide.md](./backfill-guide.md)。
+这份文档只保留最短路径。公开页面不依赖数据库；维护端同步、回填和导出流程请看 [backfill-guide.md](./backfill-guide.md)。
 
 ## 1. 安装依赖
 
@@ -8,44 +8,7 @@
 npm install
 ```
 
-## 2. 配置环境变量
-
-复制 `.env.example` 为 `.env`：
-
-```powershell
-Copy-Item .env.example .env
-```
-
-至少确认：
-
-```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/youtube_reviews?schema=public"
-YOUTUBE_API_KEY="your_youtube_api_key_here"
-OPENAI_API_KEY="your_openai_api_key_here"
-```
-
-如果只启动页面查看本地已有数据，API key 可以先保留占位。
-
-## 3. 启动数据库
-
-```powershell
-docker-compose up -d
-```
-
-## 4. 初始化本地数据库
-
-```powershell
-npm run db:generate
-npm run db:push
-```
-
-如果需要样例数据：
-
-```powershell
-npm run db:seed
-```
-
-## 5. 启动页面
+## 2. 启动公开站点
 
 ```powershell
 npm run dev -- --port 3001
@@ -57,22 +20,54 @@ npm run dev -- --port 3001
 http://localhost:3001
 ```
 
-## 6. 查看当前数据状态
+站点读取 `public-catalog/products.json`。仓库默认带一个合法空快照，所以即使没有本地 Postgres，首页、`/api/products`、详情路由和 sitemap 也应该能启动。
+
+## 3. 可选：准备维护端数据库
+
+只有需要同步视频、补字幕、抽取产品或重新导出公开快照时，才需要本地维护数据库。
+
+复制 `.env.example`：
+
+```powershell
+Copy-Item .env.example .env
+```
+
+确认 `.env` 中的维护端连接：
+
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/youtube_reviews?schema=public"
+```
+
+如果没有现成 Postgres，可以用你自己的本地数据库，或用 Docker 单独启动一个维护端 Postgres。启动数据库后执行：
+
+```powershell
+npm run db:generate
+npm run db:push
+```
+
+需要样例数据时：
+
+```powershell
+npm run db:seed
+```
+
+## 4. 导出公开快照
+
+维护端数据库可用后：
 
 ```powershell
 npm run sync:status
+DRY_RUN=true npm run export:public-catalog
+npm run export:public-catalog
 ```
 
-重点看：
+默认输出到：
 
-- `Video.total`
-- `Transcript.covered`
-- `Video.noTranscript`
-- `Product.total`
-- `Display.traditional`
-- `Display.englishSentence`
+```text
+public-catalog/products.json
+```
 
-## 7. 常用数据命令
+## 5. 常用数据命令
 
 同步播放列表：
 
@@ -100,19 +95,14 @@ npm run sync:extract
 DRY_RUN=true LIMIT=20 npm run sync:copy-backfill
 ```
 
-导出字幕：
-
-```powershell
-npm run export:transcripts
-```
-
-## 8. 提交前验证
+## 6. 提交前验证
 
 ```powershell
 npm run lint
 npm test
 npx tsc --noEmit
 npm run build
+npm run privacy:check
 ```
 
 ## 常见问题
@@ -123,25 +113,10 @@ npm run build
 npm run dev -- --port 3002
 ```
 
-### 数据库连接失败
-
-```powershell
-docker ps
-docker-compose up -d
-```
-
-确认 `.env` 中的 `DATABASE_URL` 指向本地数据库。
-
 ### 页面没有数据
 
-先运行：
+检查 `public-catalog/products.json` 是否还是空快照。需要真实目录时，先让维护端数据库可用，再执行 `npm run export:public-catalog`。
 
-```powershell
-npm run sync:status
-```
+### 导出快照失败
 
-如果 `Product.total=0`，需要先 seed 或跑同步/抽取流程。
-
-### AI 或字幕脚本失败
-
-检查 `.env` 中的 OpenAI、YouTube、Bilibili、`yt-dlp` 和 cookie 文件配置。没有有效 key 时，部分 AI/ASR 步骤会跳过或回退本地规则。
+确认 `.env` 中的 `DATABASE_URL` 指向本地维护数据库，并且数据库服务可连接。本地导出失败不会影响只读公开站点启动。

@@ -32,6 +32,8 @@
     "sync:daily": "tsx scripts/sync-daily.ts",
     "sync:backfill": "tsx scripts/backfill-all.ts",
     "export:transcripts": "tsx scripts/export-transcripts.ts",
+    "export:public-catalog": "tsx scripts/export-public-catalog.ts",
+    "recover:public-catalog": "tsx scripts/recover-public-catalog-from-api.ts",
     "backfill:audit-gaps": "tsx scripts/audit-product-gaps.ts",
     "backfill:suggest-review": "tsx scripts/suggest-product-backfill.ts",
     "backfill:apply-review": "tsx scripts/apply-product-backfill-review.ts",

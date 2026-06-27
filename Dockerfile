@@ -16,10 +16,8 @@ RUN HUSKY=0 npm ci --no-audit --no-fund
 
 FROM base AS builder
 
-ARG DATABASE_URL="postgresql://postgres:postgres@localhost:5432/youtube_reviews?schema=public"
 ARG NEXT_PUBLIC_APP_URL=""
 ARG NEXT_PUBLIC_BAIDU_TONGJI_ID=""
-ENV DATABASE_URL=$DATABASE_URL
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV NEXT_PUBLIC_BAIDU_TONGJI_ID=$NEXT_PUBLIC_BAIDU_TONGJI_ID
 ENV NODE_ENV=production
@@ -42,9 +40,10 @@ RUN groupadd --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/public-catalog ./public-catalog
 
-# Keep project tooling in the image so manual db:push and data import commands
-# from the deployment guide can run inside the same Compose service.
+# Keep maintenance tooling available for ad-hoc local-style runs, but the
+# production web process reads only the public catalog snapshot.
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/package-lock.json ./package-lock.json
@@ -52,7 +51,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
-COPY --from=builder --chown=nextjs:nodejs /app/data ./data
 
 USER nextjs
 

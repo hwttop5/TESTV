@@ -6,7 +6,7 @@ import GitHubLink from './components/GitHubLink'
 import { getProductCatalogPage, normalizePageSize, normalizeSortMode } from '@/lib/product-catalog'
 import { getProductCategoryLabel, normalizeProductCategoryKey } from '@/lib/product-category'
 import type { ProductSummary } from '@/lib/review-types'
-import { prisma } from '@/lib/prisma'
+import { getPublicCatalogProductCount } from '@/lib/public-catalog-store'
 import {
   buildHomeCanonical,
   buildHomeDescription,
@@ -16,7 +16,6 @@ import {
   SITE_NAME,
   jsonLdScript,
 } from '@/lib/seo'
-import { getPublicCatalogProductWhere } from '@/lib/product-visibility'
 
 type HomeSearchParams = Promise<{
   sort?: string | string[]
@@ -84,12 +83,8 @@ export async function generateMetadata({
 }
 
 async function getSyncStats() {
-  const count = await prisma.product.count({
-    where: getPublicCatalogProductWhere(),
-  })
-
   return {
-    products: count,
+    products: getPublicCatalogProductCount(),
   }
 }
 

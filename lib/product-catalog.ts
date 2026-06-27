@@ -1,10 +1,9 @@
-import { Prisma } from '@prisma/client'
-import { matchesProductCategory, normalizeProductCategoryKey, type ProductCategoryKey } from './product-category'
-import { prisma } from './prisma'
+import { normalizeProductCategoryKey, type ProductCategoryKey } from './product-category'
 import { compareScoreValueDesc } from './scoring'
-import { toProductSummary, type ProductSummary } from './review-types'
+import type { ProductSummary } from './review-types'
 import type { SortMode } from './catalog-sort'
-import { getPublicCatalogProductWhere } from './product-visibility'
+import { getPublicCatalogProducts, type PublicCatalogProduct } from './public-catalog-store'
+import { isPublicCatalogProductId } from './product-visibility'
 
 export { DEFAULT_SORT_MODE, normalizeSortMode } from './catalog-sort'
 export type { SortMode } from './catalog-sort'
@@ -29,60 +28,11 @@ type ProductCatalogPage = {
   pageSize: number
 }
 
-const baseListSelect = {
-  id: true,
-  productName: true,
-  productNameZh: true,
-  videoTitleZh: true,
-  scoreValue: true,
-  scoreRaw: true,
-  priceRaw: true,
-  priceValue: true,
-  priceCurrency: true,
-  priceType: true,
-  priceContext: true,
-  priceConfidence: true,
-  confidence: true,
-  contentStatus: true,
-  prosZh: true,
-  consZh: true,
-  video: {
-    select: {
-      title: true,
-      publishedAt: true,
-    },
-  },
-} satisfies Prisma.ProductSelect
-
-const pageDetailInclude = {
-  video: {
-    select: {
-      youtubeId: true,
-      title: true,
-      publishedAt: true,
-      thumbnailUrl: true,
-      videoUrl: true,
-      transcripts: {
-        select: {
-          id: true,
-          content: true,
-          segments: true,
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-      },
-    },
-  },
-} satisfies Prisma.ProductInclude
-
-type BaseListProduct = Prisma.ProductGetPayload<{ select: typeof baseListSelect }>
-type PageDetailProduct = Prisma.ProductGetPayload<{ include: typeof pageDetailInclude }>
-
-function toTimestamp(value: Date | string): number {
-  return value instanceof Date ? value.getTime() : new Date(value).getTime()
+function toTimestamp(value: string): number {
+  return new Date(value).getTime()
 }
 
-function compareBaseProducts(left: BaseListProduct, right: BaseListProduct, sort: SortMode): number {
+function compareBaseProducts(left: PublicCatalogProduct, right: PublicCatalogProduct, sort: SortMode): number {
   const leftPublishedAt = toTimestamp(left.video.publishedAt)
   const rightPublishedAt = toTimestamp(right.video.publishedAt)
   const scoreComparison = compareScoreValueDesc(left.scoreValue, right.scoreValue)
@@ -102,46 +52,27 @@ function compareBaseProducts(left: BaseListProduct, right: BaseListProduct, sort
   return rightPublishedAt - leftPublishedAt
 }
 
-function buildWhere(q: string): Prisma.ProductWhereInput {
-  const publicCatalogWhere = getPublicCatalogProductWhere()
+function normalizeSearchText(value: string): string {
+  return value.trim().toLocaleLowerCase()
+}
 
-  if (!q) return publicCatalogWhere
+function matchesSearch(product: PublicCatalogProduct, q: string): boolean {
+  const keyword = normalizeSearchText(q)
+  if (!keyword) return true
 
-  return {
-    ...publicCatalogWhere,
-    OR: [
-      {
-        productNameZh: {
-          contains: q,
-          mode: 'insensitive',
-        },
-      },
-      {
-        productName: {
-          contains: q,
-          mode: 'insensitive',
-        },
-      },
-    ],
-  }
+  return [
+    product.displayName,
+    ...(product.searchIndex || []),
+  ].some((value) => normalizeSearchText(value).includes(keyword))
 }
 
 export async function getProductCatalogPage(query: ProductCatalogQuery): Promise<ProductCatalogPage> {
   const category = normalizeProductCategoryKey(query.category)
-  const where = buildWhere(query.q)
 
-  const baseProducts = await prisma.product.findMany({
-    where,
-    select: baseListSelect,
-  })
-
-  const filteredProducts = baseProducts
-    .filter((product) => matchesProductCategory({
-      productNameZh: product.productNameZh,
-      productName: product.productName,
-      videoTitleZh: product.videoTitleZh,
-      videoTitle: product.video.title,
-    }, category))
+  const filteredProducts = getPublicCatalogProducts()
+    .filter((product) => isPublicCatalogProductId(product.id))
+    .filter((product) => matchesSearch(product, query.q))
+    .filter((product) => category === 'all' || product.categoryKey === category)
     .sort((left, right) => compareBaseProducts(left, right, query.sort))
 
   const total = filteredProducts.length
@@ -161,22 +92,10 @@ export async function getProductCatalogPage(query: ProductCatalogQuery): Promise
     }
   }
 
-  const pageProducts = await prisma.product.findMany({
-    where: {
-      id: {
-        in: pageIds,
-      },
-    },
-    include: pageDetailInclude,
-  })
-
-  const productMap = new Map(pageProducts.map((product) => [product.id, product]))
-
   return {
     products: pageIds
-      .map((id) => productMap.get(id))
-      .filter((product): product is PageDetailProduct => Boolean(product))
-      .map((product) => toProductSummary(product)),
+      .map((id) => filteredProducts.find((product) => product.id === id))
+      .filter((product): product is PublicCatalogProduct => Boolean(product)),
     total,
     totalPages,
     page: safePage,

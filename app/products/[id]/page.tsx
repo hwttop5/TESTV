@@ -3,8 +3,7 @@ import Link from 'next/link'
 import { cache } from 'react'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
-import { toProductDetail } from '@/lib/review-types'
+import { getPublicCatalogProduct } from '@/lib/public-catalog-store'
 import { formatScoreValue } from '@/lib/scoring'
 import {
   absoluteImageUrl,
@@ -43,25 +42,7 @@ function YouTubeLogo() {
 }
 
 const getProductForPage = cache(async (id: string) => {
-  return prisma.product.findUnique({
-    where: { id },
-    include: {
-      video: {
-        include: {
-          transcripts: {
-            select: {
-              id: true,
-              content: true,
-              segments: true,
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 1,
-          },
-        },
-      },
-      affiliateLinks: true,
-    },
-  })
+  return getPublicCatalogProduct(id)
 })
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
@@ -82,7 +63,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     }
   }
 
-  const detail = toProductDetail(product)
+  const detail = product
   const scoreText = detail.scoreValue === null ? '暂无评分' : `${formatScoreValue(detail.scoreValue)}/10`
   const description = truncateMetaDescription(
     `${detail.displayName} TESTV 评测整理，视频评分 ${scoreText}，包含优点、缺点、字幕文字版和原视频链接。`,
@@ -131,7 +112,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     notFound()
   }
 
-  const detail = toProductDetail(product)
+  const detail = product
   const date = new Intl.DateTimeFormat('zh-CN', {
     year: 'numeric',
     month: '2-digit',
