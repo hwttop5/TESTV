@@ -114,6 +114,15 @@ describe('product catalog visibility', () => {
 
     expect(result.total).toBe(1)
     expect(result.products.map((product) => product.id)).toEqual(['visible-product'])
+
+    const item = result.products[0] as Record<string, unknown>
+    expect(item).toHaveProperty('displayName', 'DJI Pocket 3 相机')
+    expect(item).toHaveProperty('displayPros')
+    expect(item).not.toHaveProperty('displayTranscriptParagraphs')
+    expect(item).not.toHaveProperty('videoLinks')
+    expect(item).not.toHaveProperty('affiliateLinks')
+    expect(item).not.toHaveProperty('searchIndex')
+    expect(item).not.toHaveProperty('updatedAt')
   })
 
   it('keeps the exclusion when searching by keyword', async () => {

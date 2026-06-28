@@ -88,6 +88,27 @@ export interface ProductSummary {
   }
 }
 
+export type ProductListItem = Pick<ProductSummary,
+  | 'id'
+  | 'displayName'
+  | 'displayVideoTitle'
+  | 'scoreRaw'
+  | 'scoreValue'
+  | 'displayPrice'
+  | 'displayPros'
+  | 'displayCons'
+  | 'prosCount'
+  | 'consCount'
+  | 'confidence'
+  | 'contentStatus'
+  | 'statusLabel'
+  | 'statusDescription'
+  | 'hasTranscript'
+  | 'categoryKey'
+  | 'categoryLabel'
+  | 'video'
+>
+
 export interface ProductDetail extends ProductSummary {
   displayTranscriptParagraphs: string[]
   videoLinks: {

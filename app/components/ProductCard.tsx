@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import type { ProductSummary } from '@/lib/review-types'
+import type { ProductListItem } from '@/lib/review-types'
 import { formatScoreValue } from '@/lib/scoring'
 
 function scoreTone(score: number | null): string {
@@ -18,13 +18,13 @@ function scoreVerdict(score: number | null): string {
   return '一般'
 }
 
-function statusTone(status: ProductSummary['contentStatus']): string {
+function statusTone(status: ProductListItem['contentStatus']): string {
   if (status === 'complete') return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
   if (status === 'partial') return 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
   return 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'
 }
 
-export default function ProductCard({ product }: { product: ProductSummary }) {
+export default function ProductCard({ product }: { product: ProductListItem }) {
   const date = new Intl.DateTimeFormat('zh-CN', {
     year: 'numeric',
     month: '2-digit',

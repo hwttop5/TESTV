@@ -1,6 +1,6 @@
 import { normalizeProductCategoryKey, type ProductCategoryKey } from './product-category'
 import { compareScoreValueDesc } from './scoring'
-import type { ProductSummary } from './review-types'
+import type { ProductListItem, ProductSummary } from './review-types'
 import type { SortMode } from './catalog-sort'
 import { getPublicCatalogProducts, type PublicCatalogProduct } from './public-catalog-store'
 import { isPublicCatalogProductId } from './product-visibility'
@@ -21,7 +21,7 @@ export interface ProductCatalogQuery {
 }
 
 type ProductCatalogPage = {
-  products: ProductSummary[]
+  products: ProductListItem[]
   total: number
   totalPages: number
   page: number
@@ -66,6 +66,29 @@ function matchesSearch(product: PublicCatalogProduct, q: string): boolean {
   ].some((value) => normalizeSearchText(value).includes(keyword))
 }
 
+function toProductListItem(product: ProductSummary): ProductListItem {
+  return {
+    id: product.id,
+    displayName: product.displayName,
+    displayVideoTitle: product.displayVideoTitle,
+    scoreRaw: product.scoreRaw,
+    scoreValue: product.scoreValue,
+    displayPrice: product.displayPrice,
+    displayPros: product.displayPros,
+    displayCons: product.displayCons,
+    prosCount: product.prosCount,
+    consCount: product.consCount,
+    confidence: product.confidence,
+    contentStatus: product.contentStatus,
+    statusLabel: product.statusLabel,
+    statusDescription: product.statusDescription,
+    hasTranscript: product.hasTranscript,
+    categoryKey: product.categoryKey,
+    categoryLabel: product.categoryLabel,
+    video: product.video,
+  }
+}
+
 export async function getProductCatalogPage(query: ProductCatalogQuery): Promise<ProductCatalogPage> {
   const category = normalizeProductCategoryKey(query.category)
 
@@ -78,11 +101,10 @@ export async function getProductCatalogPage(query: ProductCatalogQuery): Promise
   const total = filteredProducts.length
   const totalPages = Math.max(1, Math.ceil(total / query.pageSize))
   const safePage = Math.min(Math.max(query.page, 1), totalPages)
-  const pageIds = filteredProducts
+  const pageProducts = filteredProducts
     .slice((safePage - 1) * query.pageSize, safePage * query.pageSize)
-    .map((product) => product.id)
 
-  if (pageIds.length === 0) {
+  if (pageProducts.length === 0) {
     return {
       products: [],
       total,
@@ -93,9 +115,7 @@ export async function getProductCatalogPage(query: ProductCatalogQuery): Promise
   }
 
   return {
-    products: pageIds
-      .map((id) => filteredProducts.find((product) => product.id === id))
-      .filter((product): product is PublicCatalogProduct => Boolean(product)),
+    products: pageProducts.map(toProductListItem),
     total,
     totalPages,
     page: safePage,

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo, useState, useTransition } from 'react'
-import type { ProductSummary } from '@/lib/review-types'
+import type { ProductListItem } from '@/lib/review-types'
 import {
   PRODUCT_CATEGORY_OPTIONS,
   type ProductCategoryKey,
@@ -18,7 +18,7 @@ interface ProductListProps {
   page: number
   pageSize: number
   category: ProductCategoryKey
-  products: ProductSummary[]
+  products: ProductListItem[]
   total: number
   totalPages: number
 }
